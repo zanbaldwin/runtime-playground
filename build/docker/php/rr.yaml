@@ -1,0 +1,4 @@
+server:
+    command: "php /srv/public/index.php"
+http:
+    address: "0.0.0.0:9000"

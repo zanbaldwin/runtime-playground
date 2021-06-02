@@ -3,14 +3,14 @@
 ## Contains:
 
 - Symfony v5.3 skeleton,
-- Docker Stack for both FPM and Swoole, and
+- Docker Stack for both FPM, Swoole and RoadRunner, and
 - A handy Makefile for the SSL stuff.
 
 ## Setup Locally
 
 - You will need [`git`](https://git-scm.com/), [`openssl`](https://www.openssl.org/),
   [`make`](https://www.gnu.org/software/make/), and [`mkcert`](https://mkcert.dev/).
-- Update values in `.env` (choose `fpm` or `swoole` for `${RUNTIME}`).
+- Update values in `.env` (choose `fpm`, `swoole` or `roadrunner` for `${RUNTIME}`).
 - `docker-compose build --pull`
 - `make password`
 - `make mock-ssl`

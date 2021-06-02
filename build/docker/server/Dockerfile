@@ -42,7 +42,10 @@ RUN    apk add --no-cache --virtual .user-build-deps shadow \
     && apk del '.user-build-deps'
 
 FROM base AS swoole
-COPY "./swoole.conf" "/etc/nginx/php.conf"
+COPY "./proxy.conf" "/etc/nginx/php.conf"
+
+FROM base AS roadrunner
+COPY "./proxy.conf" "/etc/nginx/php.conf"
 
 FROM base AS fpm
 COPY "./fpm.conf" "/etc/nginx/php.conf"

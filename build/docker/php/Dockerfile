@@ -54,16 +54,30 @@ RUN    apk add --no-cache --virtual .user-build-deps shadow \
     && sed -i -e "s/www-data/${PHP_USER}/g" "/usr/local/etc/php-fpm.d/www.conf" \
     && apk del '.user-build-deps'
 
-USER "${PHP_USER}"
 WORKDIR "/srv"
 
 FROM base AS swoole
-USER "${PHP_USER}"
 ENV APP_RUNTIME="Runtime\Swoole\Runtime"
 ENV SWOOLE_HOST="0.0.0.0"
 # Use a port number above 1024 so it doesn't require root privileges. Might as well reuse the FPM port.
-ENV SWOOLE_PORT=9000
+ENV SWOOLE_PORT="9000"
+ARG PHP_USER="www-data"
+USER "${PHP_USER}"
 CMD [ "php", "/srv/public/index.php" ]
+
+FROM base AS roadrunner
+RUN    apk add --no-cache --virtual '.rr-build-deps' curl zip \
+    && mkdir -p "/tmp/rr" \
+    && curl -L -o "/tmp/rr/release.zip" "https://github.com/spiral/roadrunner-binary/releases/download/v2.2.1/roadrunner-2.2.1-unknown-musl-amd64.zip" \
+    && unzip "/tmp/rr/release.zip" -d "/tmp/rr" \
+    && mv "/tmp/rr/roadrunner-2.2.1-unknown-musl-amd64/rr" "/sbin/rr" \
+    && rm -rf "/tmp/rr" \
+    && apk del '.rr-build-deps'
+ENV APP_RUNTIME="Runtime\RoadRunnerSymfonyNyholm\Runtime"
+COPY "./rr.yaml" "/.rr.yaml"
+ARG PHP_USER="www-data"
+USER "${PHP_USER}"
+CMD [ "/sbin/rr", "-c", "/.rr.yaml", "serve" ]
 
 FROM base as fpm
 # PHP-FPM initializes as the root user, and will then switch to "${PHP_USER}" according to pool directive.
