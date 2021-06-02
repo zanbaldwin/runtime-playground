@@ -1,0 +1,136 @@
+#!/bin/sh
+
+## !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ##
+# Common *nix PATH directories (such as /usr/local/bin) and therefore anything    #
+# under them cannot be mounted using Docker for Mac (see                          #
+# https://stackoverflow.com/a/45123074). If you are using Docker for Mac,         #
+# install Composer to a macOS-specific path (such as "${HOME}/.bin/composer").    #
+## !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ##
+
+# The root folder of the application (where "composer.json" is).
+APP_DIR=".."
+# The root folder of the application (where "docker-compose.yaml" is; usually the same as the APP_DIR).
+PROJECT_DIR="${APP_DIR}"
+
+###################################################################################
+### ENVIRONMENT HELPER                                                          ###
+### --------------------------------------------------------------------------- ###
+### Run this script to create a one-off container based on the PHP service for  ###
+### CLI work. It will auto-detect if you have Composer installed on your host;  ###
+### if so it will mount Composer as a binary inside the container and also      ###
+### Composer's cache directory to reduce the amount of downloading required.    ###
+###                                                                             ###
+### Useful if you have differing PHP versions between host and container.       ###
+###################################################################################
+
+# Standardize Paths
+realpath() {
+    # Can't be bothered to refactor this. If you're not using Bash on macOS then
+    # I'm not going to bother making sure this is compatible.
+    [[ $1 = /* ]] && echo "$1" || echo "${PWD}/${1#./}"
+}
+readlink -f "$0" >/dev/null 2>&1
+if [ $? -ne 0 ]; then
+    DIR="$(dirname "$(realpath "$0")")"
+    APP_DIR="$(realpath "${DIR}/${APP_DIR}")"
+    PROJECT_DIR="$(realpath "${DIR}/${PROJECT_DIR}")"
+else
+    DIR="$(dirname "$(readlink -f "$0")")"
+    APP_DIR="$(readlink -f -- "${DIR}/${APP_DIR}")"
+    PROJECT_DIR="$(readlink -f -- "${DIR}/${PROJECT_DIR}")"
+fi
+
+# Check for Docker Permissions
+DOCKER="${DOCKER:-"docker"}"
+command -v "${DOCKER}" >/dev/null 2>&1 || {
+    echo >&2 "$(tput setaf 1)Docker Client \"${DOCKER}\" not available on \$PATH.$(tput sgr0)";
+    exit 1;
+}
+INFO=$("${DOCKER}" info >/dev/null 2>&1)
+if [ $? -ne 0 ]; then
+    echo >&2 "$(tput setaf 1)Docker Daemon unavailable.$(tput sgr0)"
+    if [ "$(id -u 2>/dev/null)" -ne "0" ]; then
+        echo >&2 "$(tput setaf 1)Perhaps retry as root?$(tput sgr0)"
+    fi
+    exit 1
+fi
+COMPOSE="${COMPOSE:-"docker-compose"}"
+command -v "${COMPOSE}" >/dev/null 2>&1 || {
+    echo >&2 "$(tput setaf 1)Docker Compose \"${COMPOSE}\" not available on \$PATH.$(tput sgr0)";
+    exit 1;
+}
+
+################################################################################
+### DETECTING COMPOSER BINARY AND CACHE DIRECTORIES                          ###
+### ------------------------------------------------------------------------ ###
+### The following is a little unweildy because it will:                      ###
+### - Attempt to detect the globally-installed Composer binary, but fallback ###
+###   onto a "composer.phar" file installed inside the "bin/" project        ###
+###   directory.                                                             ###
+### - Set appropriate "COMPOSER_HOME" env variable (falling back to a tmpfs  ###
+###   folder in case Composer doesn't exist so that the non-root user can    ###
+###   still create it if needed).                                            ###
+### - Figure out Composer's home (cache directory) and load it as a volume,  ###
+###   falling back to creating one inside the "var/" project directory if it ###
+###   can't find it.                                                         ###
+################################################################################
+
+COMPOSER=""
+# Use this default when no Composer binary is added, because without it set it will try to create on the root filesystem
+# which the non-root user cannot create directories in.
+COMPOSER_HOME="/tmp/composer"
+# Set the default cache directory to be inside the "var/" project directory (project-specific rather than global).
+COMPOSER_HOST_CACHE="${APP_DIR}/var/.composer"
+# Try loading the local, project-specific composer.phar first (in case we're on macOS which won't allow mounting
+# /private (/usr, /var, etc). If it does not exist, try mounting the globally installed Composer binary.
+for COMPOSER_BINARY in "${APP_DIR}/bin/composer.phar" "$(command -v composer 2>/dev/null)"; do
+    if [ -f "${COMPOSER_BINARY}" ]; then
+        # Assuming that PHP is installed on the host machine, try determine Composer's global home (cache) directory.
+        COMPOSER_HOST_HOMEDIR="$(php "${COMPOSER_BINARY}" global config home 2>/dev/null)"
+        if [ $? -eq 0 ] && [ -d "${COMPOSER_HOST_HOMEDIR}" ]; then
+            COMPOSER_HOST_CACHE="${COMPOSER_HOST_HOMEDIR}"
+        elif [ ! -d "${COMPOSER_HOST_CACHE}" ]; then
+            # Create the cache directory now as the host machine user, rather than let Docker create the volume
+            # bind as the root user (because then permissions would be all out of whack).
+            echo "$(tput setaf 2)Creating Composer cache directory...$(tput sgr0)"
+            mkdir -p "${COMPOSER_HOST_CACHE}"
+        fi
+        COMPOSER_HOME="/.composer"
+        COMPOSER="--volume \"${COMPOSER_BINARY}:/bin/composer:ro\" --volume \"${COMPOSER_HOST_CACHE}:${COMPOSER_HOME}\" -e \"COMPOSER_HOME=${COMPOSER_HOME}\""
+        # Hopefully at this point, the contents of the variable $COMPOSER should look something like:
+        #     --volume "/usr/local/bin/composer:/bin/composer:ro" --volume "~/.config/composer:/.composer"
+        # Break from the loop (we don't want to overwrite the flag string we just constructed).
+        break
+    fi
+done
+
+# You can specify a different service defined in docker-compose.yaml by prefixing the command with a variable, like:
+#     SERVICE=node bin/env npm i
+SERVICE="${SERVICE:-"php"}"
+
+# Specify the project directory to Docker Compose, but if a specific configuration file has been passed, also add that.
+COMPOSE_CONFIG="--project-directory=\"${PROJECT_DIR}\""
+if [ ! -z "${COMPOSE_FILE}"]; then
+    COMPOSE_FILE_PATH="${PROJECT_DIR}/${COMPOSE_FILE}"
+    if [ ! -f "${COMPOSE_FILE_PATH}" ]; then
+        echo >&2 "$(tput setaf 1)Docker Compose file \"${COMPOSE_FILE}\" not found.$(tput sgr0)"
+        exit 1
+    fi
+    COMPOSE_CONFIG="${COMPOSE_CONFIG} --file=\"${COMPOSE_FILE}\""
+fi
+
+COMMAND="sh"
+# This little snippet wraps every command-line argument (after "bin/env") in quotes so that arguments with spaces in
+# them (such as `bin/env bin/console oauth2:client:create "My Client Name"`) do not get turned into separate arguments
+# (such as `bin/env bin/console oauth2:client:create "My" "Client" "Name"`).
+if [ $# -gt 0 ]; then
+    COMMAND=""
+    for ARG in "$@"; do
+        COMMAND="${COMMAND} \"${ARG}\""
+    done
+fi
+
+SCRIPT="\"${COMPOSE}\" ${COMPOSE_CONFIG} run --rm --user=\"$(id -u):$(id -g)\" ${COMPOSER} -e \"TERM=xterm\" \"${SERVICE}\" ${COMMAND}"
+
+"${SHELL:-"sh"}" -c "${SCRIPT}"
+exit $?
