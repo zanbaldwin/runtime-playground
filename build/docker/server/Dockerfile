@@ -22,8 +22,7 @@ WORKDIR "/srv/public"
 EXPOSE 80
 EXPOSE 443
 
-RUN    sed -i -E 's/user\s+nginx/user tpb/g' '/etc/nginx/nginx.conf' \
-    && rm -rf "/etc/nginx/conf.d" \
+RUN    rm -rf "/etc/nginx/conf.d" \
     && mkdir -p "/etc/nginx/conf.d" \
     && mkdir -p "/srv/public" \
     && [ -e "/srv/public/index.php" ] || touch "/srv/public/index.php"

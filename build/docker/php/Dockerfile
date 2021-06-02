@@ -58,13 +58,12 @@ USER "${PHP_USER}"
 WORKDIR "/srv"
 
 FROM base AS swoole
-USER "tpb"
+USER "${PHP_USER}"
 ENV APP_RUNTIME="Runtime\Swoole\Runtime"
 ENV SWOOLE_HOST="0.0.0.0"
 # Use a port number above 1024 so it doesn't require root privileges. Might as well reuse the FPM port.
 ENV SWOOLE_PORT=9000
-ARG SWOOLE_ENTRY_SCRIPT="/srv/public/index.php"
-CMD [ "php", "${SWOOLE_ENTRY_SCRIPT}" ]
+CMD [ "php", "/srv/public/index.php" ]
 
 FROM base as fpm
 # PHP-FPM initializes as the root user, and will then switch to "${PHP_USER}" according to pool directive.
