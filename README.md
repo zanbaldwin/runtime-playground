@@ -1,5 +1,8 @@
 # This Project
 
+This is a working example of Symfony's Runtime component.
+Do not use this project, look through the code and pull out the parts you find interesting. Copy+paste is your friend.
+
 ## Contains:
 
 - Symfony v5.3 skeleton,
