@@ -2,9 +2,9 @@
 
 - Update values in `.env` (choose `fpm` or `swoole` for `RUNTIME`).
 - `docker-compose build --pull`
+- `make password`
 - `make mock-ssl`
 - `bin/env composer install`
-- `make password`
 - `docker-compose up -d`
 
 # Todo
