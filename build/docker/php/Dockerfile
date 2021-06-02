@@ -20,18 +20,16 @@ ENTRYPOINT [ "/tini", "--" ]
 
 # Install all standardised PHP extensions that are likely to be used by most applications.
 RUN    apk add --no-cache --upgrade --virtual ".extension-build-deps" \
-        giflib-dev gmp-dev icu-dev libffi-dev libjpeg-turbo-dev libpng-dev libwebp-dev libxml2-dev libzip-dev \
+        gmp-dev icu-dev libffi-dev libxml2-dev \
     && apk add --no-cache --upgrade --virtual ".extension-runtime-deps" \
-        giflib gmp icu libffi libjpeg-turbo libpng libwebp libxml2 libzip \
-    && docker-php-ext-configure gd --with-jpeg --with-webp \
+        gmp icu libffi libxml2 \
     && docker-php-ext-install \
-        exif ffi gd gmp intl mysqli opcache pcntl pdo_mysql sockets xml zip \
+        ffi gmp intl opcache pcntl pdo_mysql sockets xml \
     && apk del ".extension-build-deps"
 # Plus other PECL extensions that could be useful.
 # NOTE: If you want to install XDebug, make sure that you DON'T have it enabled when running Swoole.
 RUN    apk add --no-cache --upgrade --virtual ".pecl-build-deps" $PHPIZE_DEPS \
     && apk add --no-cache --upgrade --virtual ".pecl-runtime-deps" \
-    && pecl install redis && docker-php-ext-enable redis \
     && pecl install swoole && docker-php-ext-enable swoole \
     && apk del ".pecl-build-deps"
 
