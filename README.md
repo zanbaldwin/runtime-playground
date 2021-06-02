@@ -19,11 +19,6 @@
 - `mkcert -install`
 - Go to `https://${DOMAIN}:${SSL_PORT}`
 
-## Todo
-
-- Generate Nginx config using `DOMAIN` specified in `.env` during build process. Currently stuck
-  using `localhost` as the domain for now.
-
 ## Production
 
 You probably shouldn't use this for production, but if you did:

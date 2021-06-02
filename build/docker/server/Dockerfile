@@ -32,6 +32,9 @@ COPY "./challenges.conf" "/etc/nginx/challenges.conf"
 COPY "./ssl.conf" "/etc/nginx/ssl.conf"
 COPY "./server.conf" "/etc/nginx/conf.d/server.conf"
 
+ARG DOMAIN="localhost"
+RUN    sed -i -e "s/\${DOMAIN}/${DOMAIN}/g" "/etc/nginx/conf.d/server.conf"
+
 # Create a new user with UID#1000 (the UID that the user on the host machine is likely to have).
 # Instruct Nginx to run as that user.
 ARG NGINX_USER="nginx"
