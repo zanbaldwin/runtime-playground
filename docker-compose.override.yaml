@@ -1,0 +1,27 @@
+version: '3.8'
+
+## This file is meant to be used for developing on a local machine.
+## Use only the main Compose file when deploying to production using:
+## docker-compose -f docker-compose.yaml <command>
+services:
+
+    server:
+        volumes:
+            # Use self-generated certificates during development.
+            -   type: 'bind'
+                source: './build/ssl'
+                target: '/etc/letsencrypt'
+                read_only: true
+
+    database:
+        volumes:
+            # Use a volume for data during development instead of messing with
+            # system directories.
+            -   type: 'volume'
+                source: 'database'
+                target: '/var/lib/mysql'
+                read_only: false
+
+volumes:
+    database:
+        driver: 'local'
