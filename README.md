@@ -6,6 +6,24 @@
 - Docker Stack for both FPM, Swoole and RoadRunner, and
 - A handy Makefile for the SSL stuff.
 
+## How?
+
+Depending on the Docker build target (`fpm`, `swoole`, or `roadrunner`) the PHP container does the following:
+
+- For build target `fpm`:
+  - Execute `php-fpm --nodaemonize`
+  - `APP_RUNTIME` is set to `Symfony\Component\Runtime\SymfonyRuntime`
+- For build target `swoole`:
+  - Execute `php "<project-dir>/public/index.php"`
+  - `APP_RUNTIME` is set to `Runtime\Swoole\Runtime`
+  - Environment variables `SWOOLE_HOST` and `SWOOLE_PORT` are set.
+- For build target `roadrunner`
+  - Execute `/sbin/rr serve`
+  - `APP_RUNTIME` is set to `Runtime\RoadRunnerSymfonyNyholm\Runtime`
+  - `.rr.yaml` configuration file is created
+  
+In the Nginx container, build target `fpm` uses FastCGI, while build targets `swoole` and `roadrunner` use Reverse Proxy.
+
 ## Setup Locally
 
 - You will need [`git`](https://git-scm.com/), [`openssl`](https://www.openssl.org/),
