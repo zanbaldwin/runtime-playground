@@ -14,7 +14,7 @@
 - `docker-compose build --pull`
 - `make password`
 - `make mock-ssl`
-- `bin/env composer install`
+- `composer install` (or `bin/env composer install` to run it inside the PHP container)
 - `docker-compose up -d`
 - `mkcert -install`
 - Go to `https://${DOMAIN}:${SSL_PORT}`
