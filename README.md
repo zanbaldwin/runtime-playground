@@ -4,21 +4,25 @@
 
 - Symfony v5.3 skeleton,
 - Docker Stack for both FPM and Swoole, and
-- A handy Makefile.
+- A handy Makefile for the SSL stuff.
 
 ## Setup Locally
 
+- You will need [`git`](https://git-scm.com/), [`openssl`](https://www.openssl.org/),
+  [`make`](https://www.gnu.org/software/make/), and [`mkcert`](https://mkcert.dev/).
 - Update values in `.env` (choose `fpm` or `swoole` for `${RUNTIME}`).
 - `docker-compose build --pull`
 - `make password`
 - `make mock-ssl`
 - `bin/env composer install`
 - `docker-compose up -d`
+- `mkcert -install`
 - Go to `https://${DOMAIN}:${SSL_PORT}`
 
 ## Todo
 
-- Generate Nginx config using `DOMAIN` specified in `.env` during build process.
+- Generate Nginx config using `DOMAIN` specified in `.env` during build process. Currently stuck
+  using `localhost` as the domain for now.
 
 ## Production
 
